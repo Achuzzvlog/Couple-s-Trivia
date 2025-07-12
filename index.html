@@ -727,17 +727,27 @@
                     revealedAnswers.style.display = 'none';
                     nextQuestionButton.style.display = 'none'; // Hide next question button during answering phase
 
-                    // Enable/disable submit button based on if current user has answered
+                    // Determine if current user has answered
                     const myAnswer = isPlayer1 ? gameData.player1Answer : gameData.player2Answer;
+                    const otherPlayerAnswer = isPlayer1 ? gameData.player2Answer : gameData.player1Answer;
+                    const otherPlayerName = isPlayer1 ? (gameData.player2Name || 'Player 2') : (gameData.player1Name || 'Player 1');
+
                     if (myAnswer) {
                         submitAnswerButton.disabled = true;
                         answerInput.value = myAnswer;
                         answerInput.readOnly = true;
-                        showMessage("You have submitted your answer. Waiting for your partner.", 'info');
+                        // Show message if waiting for other player
+                        if (!otherPlayerAnswer) {
+                            showMessage(`You have submitted your answer. Waiting for ${otherPlayerName} to answer.`, 'info');
+                        } else {
+                            // Both have answered, state transition will handle this
+                            showMessage("Both players have answered. Player 1 can reveal.", 'info');
+                        }
                     } else {
                         submitAnswerButton.disabled = false;
                         answerInput.value = '';
                         answerInput.readOnly = false;
+                        showMessage("Please submit your answer.", 'info'); // Prompt to answer
                     }
 
                     // If both players have answered, transition to 'revealing' state
@@ -1135,3 +1145,4 @@
     </script>
 </body>
 </html>
+
