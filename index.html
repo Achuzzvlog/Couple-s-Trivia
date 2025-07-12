@@ -352,7 +352,7 @@
         const joinGameButton = document.getElementById('joinGameButton');
         const gamePlayArea = document.getElementById('gamePlayArea');
         const player1NameDisplay = document.getElementById('player1NameDisplay');
-        const player2NameDisplay = document.getElementById('player2NameDisplay');
+        const player2NameDisplay = document.getElementById('player2NameDisplay'); 
         const player1ScoreDisplay = document.getElementById('player1ScoreDisplay');
         const player2ScoreDisplay = document.getElementById('player2ScoreDisplay');
         const questionDisplay = document.getElementById('questionDisplay');
@@ -419,8 +419,12 @@
                 //
                 // Common causes for "auth/configuration-not-found" error:
                 // 1. 'authDomain' in this firebaseConfig object is incorrect or misspelled.
+                //    - Double-check your Firebase Project settings > General > Your apps > "Auth domain".
+                //      It should match exactly (e.g., "your-project-id.firebaseapp.com").
                 // 2. Firebase 'Authentication' service is NOT enabled in your Firebase project.
+                //    - Go to Firebase Console > Authentication > "Get started" or "Enable".
                 // 3. The 'Anonymous' sign-in method is NOT enabled under Authentication > Sign-in method.
+                //    - Go to Firebase Console > Authentication > "Sign-in method" tab > "Anonymous" and enable it.
                 const firebaseConfig = {
                     apiKey: "AIzaSyB4NYRePoxx7tHKV5AM_IHPQ75LFZQSOPw",
                     authDomain: "couple-s-trivia.firebaseapp.com",
@@ -948,4 +952,5 @@
     </script>
 </body>
 </html>
+
 
