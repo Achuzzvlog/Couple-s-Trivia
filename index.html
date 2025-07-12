@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Couple's Trivia Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f06d6d, #f9a8d4); /* Soft gradient background */
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto; /* Allow scrolling for smaller screens */
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            padding: 40px;
+            width: 100%;
+            max-width: 700px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+            position: relative; /* For loading overlay */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #e91e63; /* Pink heading */
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        h2 {
+            color: #d81b60; /* Darker pink for subheadings */
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #ffccd5; /* Light pink border */
+            border-radius: 10px;
+            font-size: 1.1em;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: #e91e63; /* Pink on focus */
+        }
+
+        button {
+            background-color: #e91e63; /* Pink button */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px 15px rgba(233, 30, 99, 0.3);
+            margin: 5px;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background-color: #d81b60; /* Darker pink on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(233, 30, 99, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(233, 30, 99, 0.2);
+        }
+
+        button:disabled {
+            background-color: #ffccd5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #ffccd5; /* Dashed separator */
+        }
+
+        .game-info {
+            background-color: #fff0f5; /* Light pink background */
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            color: #d81b60;
+            font-weight: 600;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #e91e63;
+        }
+
+        .score-board div {
+            padding: 10px 20px;
+            background-color: #ffebee; /* Very light pink */
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .question-area {
+            background-color: #fce4ec; /* Lighter pink */
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #880e4f; /* Darkest pink for question */
+            text-align: center;
+        }
+
+        .answers-display {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f3e5f5; /* Light purple-pink */
+            border-radius: 10px;
+            text-align: left;
+            font-size: 1.1em;
+            color: #4a148c; /* Dark purple for answers */
+        }
+
+        .answers-display div {
+            margin-bottom: 10px;
+        }
+
+        .message-box {
+            background-color: #fff3e0; /* Light orange-pink */
+            color: #ff5722; /* Orange for messages */
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-weight: 600;
+            display: none; /* Hidden by default */
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 20px;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #e91e63;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #e91e63;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+            .question-area {
+                font-size: 1.2em;
+                padding: 20px;
+            }
+            .score-board {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .score-board div {
+                width: 80%;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <div class="loading-text" id="loadingText">Loading...</div>
+        </div>
+
+        <h1>💖 Brew-Studios Presents: Couple's Trivia 💖</h1>
+        <p>A fun game for you and your partner!</p>
+
+        <div id="authSection">
+            <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="20">
+            <button id="startGameButton">Start Game</button>
+        </div>
+
+        <div id="gameLobby" style="display: none;">
+            <div class="game-info">
+                <p>Your User ID: <span id="myUserId"></span></p>
+                <p>Status: <span id="gameStatus">Connecting...</span></p>
+            </div>
+
+            <h2>Create or Join a Game</h2>
+            <button id="createGameButton">Create New Game</button>
+            <div class="section">
+                <input type="text" id="joinGameIdInput" placeholder="Enter partner's User ID to join">
+                <button id="joinGameButton">Join Game</button>
+            </div>
+        </div>
+
+        <div id="gamePlayArea" style="display: none;">
+            <div class="score-board">
+                <div><span id="player1NameDisplay">Player 1</span>: <span id="player1ScoreDisplay">0</span></div>
+                <div><span id="player2NameDisplay">Player 2</span>: <span id="player2ScoreDisplay">0</span></div>
+            </div>
+
+            <div class="question-area" id="questionDisplay">Waiting for game to start...</div>
+
+            <div id="answerInputSection">
+                <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100">
+                <button id="submitAnswerButton">Submit Answer</button>
+            </div>
+
+            <div class="answers-display" id="revealedAnswers" style="display: none;">
+                <h3>Answers:</h3>
+                <div id="player1AnswerDisplay"></div>
+                <div id="player2AnswerDisplay"></div>
+                <button id="nextQuestionButton" style="margin-top: 15px;">Next Question</button>
+            </div>
+
+            <div class="message-box" id="messageBox"></div>
+
+            <button id="leaveGameButton" style="margin-top: 30px;">Leave Game</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase instances
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let playerName = "Guest";
+        let gameId = null; // The ID of the current game room
+        let unsubscribeGameListener = null; // To stop listening to game updates
+        let currentQuestionIndex = 0; // To track the current question from the static list
+
+        // Static list of trivia questions
+        const triviaQuestions = [
+            "What was our first date?",
+            "What's one thing I do that always makes you laugh?",
+            "What's your favorite memory of us together?",
+            "If we could travel anywhere in the world right now, where would it be?",
+            "What's a small gesture that always makes you feel loved?",
+            "What's your favorite meal that I cook (or we cook together)?",
+            "What's a dream or goal you have that you'd like us to achieve together?",
+            "What's your favorite inside joke between us?",
+            "If we were characters in a movie, what genre would it be?",
+            "What song reminds you most of our relationship?",
+            "What's one new thing you'd like to try with me?",
+            "What's your favorite way to relax together?",
+            "What's the most adventurous thing we've done as a couple?",
+            "What's one quality you admire most about me?",
+            "If we had a pet together, what would it be and what would we name it?"
+        ];
+
+        // Get elements
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const authSection = document.getElementById('authSection');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const startGameButton = document.getElementById('startGameButton');
+        const gameLobby = document.getElementById('gameLobby');
+        const myUserIdSpan = document.getElementById('myUserId');
+        const gameStatusSpan = document.getElementById('gameStatus');
+        const createGameButton = document.getElementById('createGameButton');
+        const joinGameIdInput = document.getElementById('joinGameIdInput');
+        const joinGameButton = document.getElementById('joinGameButton');
+        const gamePlayArea = document.getElementById('gamePlayArea');
+        const player1NameDisplay = document.getElementById('player1NameDisplay');
+        const player2NameDisplay = document.getElementById('player2NameDisplay');
+        const player1ScoreDisplay = document.getElementById('player1ScoreDisplay');
+        const player2ScoreDisplay = document.getElementById('player2ScoreDisplay');
+        const questionDisplay = document.getElementById('questionDisplay');
+        const answerInputSection = document.getElementById('answerInputSection');
+        const answerInput = document.getElementById('answerInput');
+        const submitAnswerButton = document.getElementById('submitAnswerButton');
+        const revealedAnswers = document.getElementById('revealedAnswers');
+        const player1AnswerDisplay = document.getElementById('player1AnswerDisplay');
+        const player2AnswerDisplay = document.getElementById('player2AnswerDisplay');
+        const nextQuestionButton = document.getElementById('nextQuestionButton');
+        const messageBox = document.getElementById('messageBox');
+        const leaveGameButton = document.getElementById('leaveGameButton');
+
+        /**
+         * Displays a message in the message box.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', 'info'.
+         */
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.style.backgroundColor = ''; // Reset
+            messageBox.style.color = ''; // Reset
+
+            if (type === 'success') {
+                messageBox.style.backgroundColor = '#e8f5e9';
+                messageBox.style.color = '#2e7d32';
+            } else if (type === 'error') {
+                messageBox.style.backgroundColor = '#ffebee';
+                messageBox.style.color = '#c62828';
+            } else { // info
+                messageBox.style.backgroundColor = '#e3f2fd';
+                messageBox.style.color = '#1565c0';
+            }
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        /**
+         * Shows or hides the loading overlay.
+         * @param {boolean} show - True to show, false to hide.
+         * @param {string} text - Optional text to display.
+         */
+        function showLoading(show, text = 'Loading...') {
+            loadingText.textContent = text;
+            if (show) {
+                loadingOverlay.classList.add('active');
+            } else {
+                loadingOverlay.classList.remove('active');
+            }
+        }
+
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initializeFirebase() {
+            showLoading(true, 'Initializing game...');
+            try {
+                // __app_id and __firebase_config are global variables provided by the Canvas environment
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+                const firebaseConfig = {
+
+                apiKey: "AIzaSyB4NYRePoxx7tHKV5AM_IHPQ75LFZQSOPw",
+
+                authDomain: "couple-s-trivia.firebaseapp.com",
+
+                projectId: "couple-s-trivia",
+
+                storageBucket: "couple-s-trivia.firebasestorage.app",
+
+                messagingSenderId: "262441038638",
+
+                appId: "1:262441038638:web:9a0c3fdd2b702ce0d680bf"
+
+                };
+
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // __initial_auth_token is a global variable provided by the Canvas environment
+                //if (typeof __initial_auth_token !== 'undefined') {
+                 //   await signInWithCustomToken(auth, __initial_auth_token);
+                //} else {
+                  //  await signInAnonymously(auth);
+                //}
+                await signInAnonymously(auth); // Sign in anonymously for game functionality
+                
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        myUserIdSpan.textContent = userId;
+                        gameStatusSpan.textContent = "Ready to play!";
+                        console.log("Firebase initialized. User ID:", userId);
+                        showLoading(false);
+                        // Show auth section first to get player name
+                        authSection.style.display = 'block';
+                    } else {
+                        userId = null;
+                        myUserIdSpan.textContent = 'N/A';
+                        gameStatusSpan.textContent = "Not authenticated.";
+                        console.log("User signed out or not authenticated.");
+                        showLoading(false);
+                        authSection.style.display = 'block';
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showMessage("Failed to initialize game. Please try again.", 'error');
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Gets the next trivia question from the static list.
+         * Cycles back to the beginning if all questions have been used.
+         * @returns {string} The next trivia question.
+         */
+        function getNextTriviaQuestion() {
+            if (triviaQuestions.length === 0) {
+                return "No questions available. Please add more!";
+            }
+            const question = triviaQuestions[currentQuestionIndex];
+            currentQuestionIndex = (currentQuestionIndex + 1) % triviaQuestions.length; // Cycle through questions
+            return question;
+        }
+
+        /**
+         * Sets up a real-time listener for the game document.
+         * @param {string} id - The game ID.
+         */
+        function setupGameListener(id) {
+            if (unsubscribeGameListener) {
+                unsubscribeGameListener(); // Unsubscribe from previous listener if any
+            }
+
+            const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, id);
+
+            unsubscribeGameListener = onSnapshot(gameDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const gameData = docSnap.data();
+                    console.log("Game data updated:", gameData);
+                    updateGameUI(gameData);
+                } else {
+                    console.log("Game does not exist or was deleted.");
+                    showMessage("The game you were in no longer exists.", 'error');
+                    leaveGame(); // Automatically leave if game is deleted
+                }
+            }, (error) => {
+                console.error("Error listening to game updates:", error);
+                showMessage("Error receiving game updates. Please check your connection.", 'error');
+            });
+        }
+
+        /**
+         * Updates the UI based on the current game state.
+         * @param {object} gameData - The current game data from Firestore.
+         */
+        function updateGameUI(gameData) {
+            // Update player names and scores
+            player1NameDisplay.textContent = gameData.player1Name || 'Player 1';
+            player2NameDisplay.textContent = gameData.player2Name || 'Player 2';
+            player1ScoreDisplay.textContent = gameData.player1Score || 0;
+            player2ScoreDisplay.textContent = gameData.player2Score || 0;
+
+            // Determine if current user is player 1 or player 2
+            const isPlayer1 = userId === gameData.player1Id;
+            const isPlayer2 = userId === gameData.player2Id;
+
+            // Show game play area
+            gameLobby.style.display = 'none';
+            gamePlayArea.style.display = 'block';
+
+            // Update game status message
+            if (!gameData.player2Id) {
+                gameStatusSpan.textContent = "Waiting for partner to join...";
+                questionDisplay.textContent = "Share your User ID to your partner: " + gameId;
+                answerInputSection.style.display = 'none';
+                revealedAnswers.style.display = 'none';
+                submitAnswerButton.disabled = true;
+                nextQuestionButton.disabled = true;
+                return; // Wait until both players are connected
+            } else {
+                gameStatusSpan.textContent = "Game in progress!";
+            }
+
+            // Game state logic
+            switch (gameData.state) {
+                case 'waiting':
+                    questionDisplay.textContent = "Waiting for game to start...";
+                    answerInputSection.style.display = 'none';
+                    revealedAnswers.style.display = 'none';
+                    submitAnswerButton.disabled = true;
+                    nextQuestionButton.disabled = true;
+
+                    // If both players are present, player 1 can start the game
+                    if (isPlayer1 && gameData.player2Id) {
+                        questionDisplay.textContent = "Both players are here! Player 1, click 'Next Question' to start.";
+                        nextQuestionButton.style.display = 'block';
+                        nextQuestionButton.textContent = "Start Game";
+                        nextQuestionButton.disabled = false;
+                    } else if (isPlayer2 && gameData.player2Id) {
+                        questionDisplay.textContent = "Waiting for Player 1 to start the game...";
+                        nextQuestionButton.style.display = 'none';
+                    }
+                    break;
+
+                case 'question':
+                    questionDisplay.textContent = gameData.currentQuestion;
+                    answerInputSection.style.display = 'block';
+                    revealedAnswers.style.display = 'none';
+                    nextQuestionButton.style.display = 'none';
+
+                    // Enable/disable submit button based on if current user has answered
+                    const myAnswer = isPlayer1 ? gameData.player1Answer : gameData.player2Answer;
+                    if (myAnswer) {
+                        submitAnswerButton.disabled = true;
+                        answerInput.value = myAnswer;
+                        answerInput.readOnly = true;
+                        showMessage("You have submitted your answer. Waiting for your partner.", 'info');
+                    } else {
+                        submitAnswerButton.disabled = false;
+                        answerInput.value = '';
+                        answerInput.readOnly = false;
+                    }
+
+                    // If both players have answered, transition to 'revealing' state
+                    if (gameData.player1Answer && gameData.player2Answer) {
+                        if (isPlayer1) { // Only player 1 updates state to avoid race conditions
+                            updateDoc(doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId), {
+                                state: 'revealing'
+                            }).catch(e => console.error("Error updating state to revealing:", e));
+                        }
+                    }
+                    break;
+
+                case 'revealing':
+                    questionDisplay.textContent = gameData.currentQuestion;
+                    answerInputSection.style.display = 'none';
+                    revealedAnswers.style.display = 'block';
+                    nextQuestionButton.style.display = 'block';
+                    nextQuestionButton.textContent = "Next Question";
+
+                    player1AnswerDisplay.innerHTML = `<strong>${gameData.player1Name || 'Player 1'}'s Answer:</strong> ${gameData.player1Answer || 'No answer'}`;
+                    player2AnswerDisplay.innerHTML = `<strong>${gameData.player2Name || 'Player 2'}'s Answer:</strong> ${gameData.player2Answer || 'No answer'}`;
+
+                    // Only player 1 can advance to the next question
+                    nextQuestionButton.disabled = !isPlayer1;
+                    if (!isPlayer1) {
+                        showMessage("Waiting for Player 1 to advance to the next question.", 'info');
+                    }
+                    break;
+
+                case 'finished':
+                    questionDisplay.textContent = "Game Over! Final Scores:";
+                    answerInputSection.style.display = 'none';
+                    revealedAnswers.style.display = 'none';
+                    nextQuestionButton.style.display = 'none';
+                    showMessage("Game finished! You can start a new one or leave.", 'info');
+                    break;
+            }
+        }
+
+        /**
+         * Creates a new game room.
+         */
+        async function createGame() {
+            if (!userId) {
+                showMessage("Please log in first.", 'error');
+                return;
+            }
+            showLoading(true, 'Creating game...');
+            try {
+                gameId = userId; // Use creator's UID as game ID for simplicity
+                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocSnap = await getDoc(gameDocRef);
+
+                if (gameDocSnap.exists()) {
+                    showMessage("A game with your ID already exists. Joining it.", 'info');
+                    await joinGame(gameId); // Try to join if it exists
+                    return;
+                }
+
+                // Reset question index for a new game
+                currentQuestionIndex = 0;
+
+                await setDoc(gameDocRef, {
+                    player1Id: userId,
+                    player1Name: playerName,
+                    player2Id: null,
+                    player2Name: null,
+                    currentQuestion: '',
+                    player1Answer: '',
+                    player2Answer: '',
+                    player1Score: 0,
+                    player2Score: 0,
+                    state: 'waiting', // waiting, question, revealing, finished
+                    lastUpdated: new Date().toISOString()
+                });
+                showMessage("Game created! Share your User ID with your partner.", 'success');
+                myUserIdSpan.textContent = userId;
+                setupGameListener(gameId);
+                showLoading(false);
+            } catch (error) {
+                console.error("Error creating game:", error);
+                showMessage("Failed to create game. Please try again.", 'error');
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Joins an existing game room.
+         * @param {string} id - The ID of the game to join.
+         */
+        async function joinGame(id) {
+            if (!userId) {
+                showMessage("Please log in first.", 'error');
+                return;
+            }
+            if (!id) {
+                showMessage("Please enter a game ID to join.", 'error');
+                return;
+            }
+            showLoading(true, 'Joining game...');
+            try {
+                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, id);
+                const gameDocSnap = await getDoc(gameDocRef);
+
+                if (!gameDocSnap.exists()) {
+                    showMessage("Game not found. Please check the ID.", 'error');
+                    showLoading(false);
+                    return;
+                }
+
+                const gameData = gameDocSnap.data();
+
+                if (gameData.player1Id === userId || gameData.player2Id === userId) {
+                    gameId = id;
+                    showMessage("You are already in this game.", 'info');
+                    setupGameListener(gameId);
+                    showLoading(false);
+                    return;
+                }
+
+                if (gameData.player2Id && gameData.player2Id !== userId) {
+                    showMessage("This game already has two players.", 'error');
+                    showLoading(false);
+                    return;
+                }
+
+                // If player2Id is null, join as player 2
+                await updateDoc(gameDocRef, {
+                    player2Id: userId,
+                    player2Name: playerName,
+                    lastUpdated: new Date().toISOString()
+                });
+                gameId = id;
+                showMessage("Joined game successfully!", 'success');
+                myUserIdSpan.textContent = userId;
+                setupGameListener(gameId);
+                showLoading(false);
+            } catch (error) {
+                console.error("Error joining game:", error);
+                showMessage("Failed to join game. Please try again.", 'error');
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Submits the current player's answer.
+         */
+        async function submitAnswer() {
+            if (!gameId || !userId) {
+                showMessage("Not in a game or not logged in.", 'error');
+                return;
+            }
+            const answer = answerInput.value.trim();
+            if (!answer) {
+                showMessage("Please enter an answer.", 'info');
+                return;
+            }
+
+            showLoading(true, 'Submitting answer...');
+            try {
+                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocSnap = await getDoc(gameDocRef);
+                if (!gameDocSnap.exists()) {
+                    showMessage("Game not found.", 'error');
+                    showLoading(false);
+                    return;
+                }
+                const gameData = gameDocSnap.data();
+
+                let updateData = {};
+                if (userId === gameData.player1Id) {
+                    updateData.player1Answer = answer;
+                } else if (userId === gameData.player2Id) {
+                    updateData.player2Answer = answer;
+                } else {
+                    showMessage("You are not a player in this game.", 'error');
+                    showLoading(false);
+                    return;
+                }
+
+                await updateDoc(gameDocRef, updateData);
+                answerInput.value = ''; // Clear input after submission
+                answerInput.readOnly = true;
+                submitAnswerButton.disabled = true;
+                showMessage("Answer submitted!", 'success');
+                showLoading(false);
+            } catch (error) {
+                console.error("Error submitting answer:", error);
+                showMessage("Failed to submit answer. Please try again.", 'error');
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Advances the game to the next question or ends it.
+         * Only Player 1 can trigger this.
+         */
+        async function nextQuestion() {
+            if (!gameId || !userId) {
+                showMessage("Not in a game or not logged in.", 'error');
+                return;
+            }
+
+            showLoading(true, 'Advancing game...');
+            try {
+                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocSnap = await getDoc(gameDocRef);
+                if (!gameDocSnap.exists()) {
+                    showMessage("Game not found.", 'error');
+                    showLoading(false);
+                    return;
+                }
+                const gameData = gameDocSnap.data();
+
+                // Only player 1 can advance
+                if (userId !== gameData.player1Id) {
+                    showMessage("Only Player 1 can advance the game.", 'error');
+                    showLoading(false);
+                    return;
+                }
+
+                // If currently revealing, calculate scores and prepare for next question
+                if (gameData.state === 'revealing') {
+                    // For simplicity, let's say both get a point if they answered.
+                    // You could add logic here for correct/incorrect answers if questions had predefined answers.
+                    let newPlayer1Score = gameData.player1Score || 0;
+                    let newPlayer2Score = gameData.player2Score || 0;
+
+                    if (gameData.player1Answer) {
+                        newPlayer1Score++;
+                    }
+                    if (gameData.player2Answer) {
+                        newPlayer2Score++;
+                    }
+
+                    // Get the next question from the static list
+                    const newQuestion = getNextTriviaQuestion();
+
+                    await updateDoc(gameDocRef, {
+                        player1Score: newPlayer1Score,
+                        player2Score: newPlayer2Score,
+                        currentQuestion: newQuestion,
+                        player1Answer: '', // Clear previous answers
+                        player2Answer: '',
+                        state: 'question',
+                        lastUpdated: new Date().toISOString()
+                    });
+                    showMessage("Next question!", 'success');
+                } else if (gameData.state === 'waiting' && gameData.player2Id) {
+                    // Initial start of the game by Player 1
+                    const initialQuestion = getNextTriviaQuestion();
+                    await updateDoc(gameDocRef, {
+                        currentQuestion: initialQuestion,
+                        state: 'question',
+                        lastUpdated: new Date().toISOString()
+                    });
+                    showMessage("Game started!", 'success');
+                } else {
+                    showMessage("Game is not in a state to advance.", 'info');
+                }
+                showLoading(false);
+            } catch (error) {
+                console.error("Error advancing game:", error);
+                showMessage("Failed to advance game. Please try again.", 'error');
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Leaves the current game.
+         */
+        async function leaveGame() {
+            if (!gameId || !userId) {
+                showMessage("Not in a game.", 'info');
+                resetUI();
+                return;
+            }
+
+            showLoading(true, 'Leaving game...');
+            try {
+                if (unsubscribeGameListener) {
+                    unsubscribeGameListener(); // Stop listening
+                    unsubscribeGameListener = null;
+                }
+
+                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocSnap = await getDoc(gameDocRef);
+
+                if (gameDocSnap.exists()) {
+                    const gameData = gameDocSnap.data();
+                    if (gameData.player1Id === userId) {
+                        // If player 1 leaves, delete the game room
+                        await deleteDoc(gameDocRef);
+                        showMessage("Game room deleted as you were Player 1.", 'info');
+                    } else if (gameData.player2Id === userId) {
+                        // If player 2 leaves, clear their slot
+                        await updateDoc(gameDocRef, {
+                            player2Id: null,
+                            player2Name: null,
+                            lastUpdated: new Date().toISOString(),
+                            state: 'waiting' // Revert to waiting for a new player
+                        });
+                        showMessage("You have left the game.", 'info');
+                    }
+                }
+                gameId = null;
+                resetUI();
+                showLoading(false);
+            } catch (error) {
+                console.error("Error leaving game:", error);
+                showMessage("Failed to leave game gracefully. You might need to refresh.", 'error');
+                resetUI();
+                showLoading(false);
+            }
+        }
+
+        /**
+         * Resets the UI to the initial state (auth section).
+         */
+        function resetUI() {
+            authSection.style.display = 'block';
+            gameLobby.style.display = 'none';
+            gamePlayArea.style.display = 'none';
+            playerNameInput.value = playerName; // Keep last entered name
+            joinGameIdInput.value = '';
+            answerInput.value = '';
+            answerInput.readOnly = false;
+            submitAnswerButton.disabled = false;
+            revealedAnswers.style.display = 'none';
+            nextQuestionButton.style.display = 'none';
+            player1ScoreDisplay.textContent = '0';
+            player2ScoreDisplay.textContent = '0';
+            player1NameDisplay.textContent = 'Player 1';
+            player2NameDisplay.textContent = 'Player 2';
+            questionDisplay.textContent = 'Waiting for game to start...';
+            myUserIdSpan.textContent = userId || 'N/A';
+            gameStatusSpan.textContent = 'Ready to play!';
+            showMessage("", 'info'); // Clear any lingering messages
+            currentQuestionIndex = 0; // Reset question index for new game
+        }
+
+        // Event Listeners
+        startGameButton.addEventListener('click', () => {
+            const name = playerNameInput.value.trim();
+            if (name) {
+                playerName = name;
+                authSection.style.display = 'none';
+                gameLobby.style.display = 'block';
+                myUserIdSpan.textContent = userId; // Ensure it's updated
+            } else {
+                showMessage("Please enter your name.", 'info');
+            }
+        });
+
+        createGameButton.addEventListener('click', createGame);
+        joinGameButton.addEventListener('click', () => joinGame(joinGameIdInput.value.trim()));
+        submitAnswerButton.addEventListener('click', submitAnswer);
+        nextQuestionButton.addEventListener('click', nextQuestion);
+        leaveGameButton.addEventListener('click', leaveGame);
+
+        // Initialize Firebase when the window loads
+        window.onload = initializeFirebase;
+    </script>
+</body>
+</html>
