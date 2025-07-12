@@ -215,10 +215,40 @@
             100% { transform: rotate(360deg); }
         }
 
-        .loading-text {
-            color: #e91e63;
+        /* Game Over Screen */
+        #gameOverScreen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            background-color: #fce4ec;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        #gameOverScreen h2 {
+            font-size: 2.2em;
+            color: #880e4f;
+            margin-bottom: 15px;
+        }
+
+        #gameOverScreen p {
+            font-size: 1.3em;
             font-weight: 600;
-            font-size: 1.2em;
+            color: #d81b60;
+            margin-bottom: 25px;
+        }
+
+        /* Confetti Canvas */
+        #confettiCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through */
+            z-index: 9; /* Below loading overlay, above other content */
         }
 
         /* Responsive adjustments */
@@ -249,6 +279,7 @@
 </head>
 <body>
     <div class="container">
+        <canvas id="confettiCanvas"></canvas>
         <div class="loading-overlay" id="loadingOverlay">
             <div class="spinner"></div>
             <div class="loading-text" id="loadingText">Loading...</div>
@@ -303,6 +334,13 @@
 
             <button id="leaveGameButton" style="margin-top: 30px;">Leave Game</button>
         </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" style="display: none;">
+            <h2>Game Over!</h2>
+            <p id="finalScores"></p>
+            <button id="playAgainButton">Play Again</button>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->
@@ -319,27 +357,14 @@
         let playerName = "Guest";
         let gameId = null; // The ID of the current game room
         let unsubscribeGameListener = null; // To stop listening to game updates
-        let currentQuestionIndex = 0; // To track the current question from the static list
+        let currentQuestionCount = 0; // Tracks number of questions asked in current game
+        const maxQuestions = 10; // Max questions per game for dynamic generation
         let appId = null; // Declare appId globally to be set from firebaseConfig
 
-        // Static list of trivia questions
-        const triviaQuestions = [
-            "What was our first date?",
-            "What's one thing I do that always makes you laugh?",
-            "What's your favorite memory of us together?",
-            "If we could travel anywhere in the world right now, where would it be?",
-            "What's a small gesture that always makes you feel loved?",
-            "What's your favorite meal that I cook (or we cook together)?",
-            "What's a dream or goal you have that you'd like us to achieve together?",
-            "What's your favorite inside joke between us?",
-            "If we were characters in a movie, what genre would it be?",
-            "What song reminds you most of our relationship?",
-            "What's one new thing you'd like to try with me?",
-            "What's your favorite way to relax together?",
-            "What's the most adventurous thing we've done as a couple?",
-            "What's one quality you admire most about me?",
-            "If we had a pet together, what would it be and what would we name it?"
-        ];
+        // Gemini API Key (empty string for Canvas runtime injection)
+        const GEMINI_API_KEY = ""; 
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
 
         // Get elements
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -368,13 +393,98 @@
         const nextQuestionButton = document.getElementById('nextQuestionButton');
         const messageBox = document.getElementById('messageBox');
         const leaveGameButton = document.getElementById('leaveGameButton');
+        const gameOverScreen = document.getElementById('gameOverScreen'); // New element
+        const finalScoresDisplay = document.getElementById('finalScores'); // New element
+        const playAgainButton = document.getElementById('playAgainButton'); // New element
+
+        // Confetti Canvas elements
+        const confettiCanvas = document.getElementById('confettiCanvas');
+        const confettiCtx = confettiCanvas.getContext('2d');
+        let confettiParticles = [];
+        const maxConfetti = 100; // Max number of confetti particles
+
+        /**
+         * Confetti particle class.
+         */
+        class ConfettiParticle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 10 + 5;
+                this.color = color;
+                this.speedX = Math.random() * 6 - 3;
+                this.speedY = Math.random() * -10 - 5;
+                this.gravity = 0.3;
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 10 - 5;
+            }
+
+            update() {
+                this.speedY += this.gravity;
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.rotation += this.rotationSpeed;
+            }
+
+            draw() {
+                confettiCtx.save();
+                confettiCtx.translate(this.x, this.y);
+                confettiCtx.rotate(this.rotation * Math.PI / 180);
+                confettiCtx.fillStyle = this.color;
+                confettiCtx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+                confettiCtx.restore();
+            }
+        }
+
+        /**
+         * Emits confetti from a specific point.
+         * @param {number} x - X coordinate.
+         * @param {number} y - Y coordinate.
+         * @param {number} count - Number of particles.
+         */
+        function emitConfetti(x, y, count) {
+            const colors = ['#f06d6d', '#f9a8d4', '#e91e63', '#d81b60', '#880e4f'];
+            for (let i = 0; i < count; i++) {
+                if (confettiParticles.length < maxConfetti) {
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    confettiParticles.push(new ConfettiParticle(x, y, color));
+                }
+            }
+        }
+
+        /**
+         * Animates the confetti particles.
+         */
+        function animateConfetti() {
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const particle = confettiParticles[i];
+                particle.update();
+                particle.draw();
+
+                // Remove particles that are off-screen
+                if (particle.y > confettiCanvas.height || particle.x < 0 || particle.x > confettiCanvas.width) {
+                    confettiParticles.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(animateConfetti);
+        }
+
+        /**
+         * Resizes the confetti canvas to fill the window.
+         */
+        function resizeConfettiCanvas() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
 
         /**
          * Displays a message in the message box.
          * @param {string} message - The message to display.
          * @param {string} type - 'success', 'error', 'info'.
+         * @param {boolean} persistent - If true, message won't auto-hide.
          */
-        function showMessage(message, type = 'info') {
+        function showMessage(message, type = 'info', persistent = false) {
             messageBox.textContent = message;
             messageBox.style.display = 'block';
             messageBox.style.backgroundColor = ''; // Reset
@@ -391,9 +501,11 @@
                 messageBox.style.color = '#1565c0';
             }
 
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000);
+            if (!persistent) {
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 5000);
+            }
         }
 
         /**
@@ -478,17 +590,48 @@
         }
 
         /**
-         * Gets the next trivia question from the static list.
-         * Cycles back to the beginning if all questions have been used.
-         * @returns {string} The next trivia question.
+         * Generates a trivia question using the Gemini API.
+         * @returns {Promise<string>} A promise that resolves with the generated question.
          */
-        function getNextTriviaQuestion() {
-            if (triviaQuestions.length === 0) {
-                return "No questions available. Please add more!";
+        async function generateTriviaQuestion() {
+            showLoading(true, 'Generating a new question...');
+            try {
+                const prompt = "Generate a single, fun, lighthearted trivia question for a couple's game. It should be a general knowledge question or a fun 'would you rather' type question, not something too personal or specific to a real couple. Keep it concise and engaging. Example: 'What is the capital of France?' or 'Would you rather have a pet dragon or a pet unicorn?'";
+                
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+                const payload = { contents: chatHistory };
+                
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    showLoading(false);
+                    return text;
+                } else {
+                    throw new Error("Invalid response structure from Gemini API.");
+                }
+            } catch (error) {
+                console.error("Error generating question from Gemini API:", error);
+                showMessage("Failed to generate question. Using a fallback question.", 'error');
+                showLoading(false);
+                // Fallback to a generic question if API fails
+                return "What is your partner's favorite color?"; 
             }
-            const question = triviaQuestions[currentQuestionIndex];
-            currentQuestionIndex = (currentQuestionIndex + 1) % triviaQuestions.length; // Cycle through questions
-            return question;
         }
 
         /**
@@ -511,12 +654,12 @@
                     updateGameUI(gameData);
                 } else {
                     console.log("Game does not exist or was deleted.");
-                    showMessage("The game you were in no longer exists.", 'error');
+                    showMessage("The game you were in no longer exists.", 'error', true); // Persistent error
                     leaveGame(); // Automatically leave if game is deleted
                 }
             }, (error) => {
                 console.error("Error listening to game updates:", error);
-                showMessage("Error receiving game updates. Please check your connection.", 'error');
+                showMessage("Error receiving game updates. Please check your connection.", 'error', true); // Persistent error
             });
         }
 
@@ -534,6 +677,9 @@
             // Determine if current user is player 1 or player 2
             const isPlayer1 = userId === gameData.player1Id;
             const isPlayer2 = userId === gameData.player2Id;
+
+            // Hide game over screen by default
+            gameOverScreen.style.display = 'none';
 
             // Show game play area
             gameLobby.style.display = 'none';
@@ -564,7 +710,7 @@
 
                     // If both players are present, player 1 can start the game
                     if (isPlayer1 && gameData.player2Id) {
-                        questionDisplay.textContent = "Both players are here! Player 1, click 'Next Question' to start.";
+                        questionDisplay.textContent = "Both players are here! Player 1, click 'Start Game' to begin.";
                         nextQuestionButton.style.display = 'block'; // Make it visible for Player 1
                         nextQuestionButton.textContent = "Start Game";
                         nextQuestionButton.disabled = false;
@@ -621,11 +767,13 @@
                     break;
 
                 case 'finished':
-                    questionDisplay.textContent = "Game Over! Final Scores:";
-                    answerInputSection.style.display = 'none';
-                    revealedAnswers.style.display = 'none';
-                    nextQuestionButton.style.display = 'none';
-                    showMessage("Game finished! You can start a new one or leave.", 'info');
+                    gamePlayArea.style.display = 'none';
+                    gameOverScreen.style.display = 'flex'; // Show game over screen
+                    finalScoresDisplay.innerHTML = `Final Score: <br/><strong>${gameData.player1Name || 'Player 1'}</strong>: ${gameData.player1Score} <br/><strong>${gameData.player2Name || 'Player 2'}</strong>: ${gameData.player2Score}`;
+                    showMessage("Game Over! Click 'Play Again' to start a new game.", 'info', true); // Persistent message
+                    
+                    // Trigger confetti effect
+                    emitConfetti(confettiCanvas.width / 2, confettiCanvas.height / 2, 100);
                     break;
             }
         }
@@ -650,8 +798,8 @@
                     return;
                 }
 
-                // Reset question index for a new game
-                currentQuestionIndex = 0;
+                // Reset question count for a new game
+                currentQuestionCount = 0;
 
                 await setDoc(gameDocRef, {
                     player1Id: userId,
@@ -664,7 +812,8 @@
                     player1Score: 0,
                     player2Score: 0,
                     state: 'waiting', // waiting, question, revealing, finished
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: new Date().toISOString(),
+                    questionCount: 0 // Initialize question count in Firestore
                 });
                 showMessage("Game created! Share your User ID with your partner.", 'success');
                 myUserIdSpan.textContent = userId;
@@ -814,8 +963,6 @@
 
                 // If currently revealing, calculate scores and prepare for next question
                 if (gameData.state === 'revealing') {
-                    // For simplicity, let's say both get a point if they answered.
-                    // You could add logic here for correct/incorrect answers if questions had predefined answers.
                     let newPlayer1Score = gameData.player1Score || 0;
                     let newPlayer2Score = gameData.player2Score || 0;
 
@@ -826,26 +973,42 @@
                         newPlayer2Score++;
                     }
 
-                    // Get the next question from the static list
-                    const newQuestion = getNextTriviaQuestion();
+                    // Increment question count
+                    currentQuestionCount = (gameData.questionCount || 0) + 1;
 
-                    await updateDoc(gameDocRef, {
-                        player1Score: newPlayer1Score,
-                        player2Score: newPlayer2Score,
-                        currentQuestion: newQuestion,
-                        player1Answer: '', // Clear previous answers
-                        player2Answer: '',
-                        state: 'question',
-                        lastUpdated: new Date().toISOString()
-                    });
-                    showMessage("Next question!", 'success');
+                    // Check if all questions have been asked
+                    if (currentQuestionCount >= maxQuestions) {
+                        await updateDoc(gameDocRef, {
+                            player1Score: newPlayer1Score,
+                            player2Score: newPlayer2Score,
+                            state: 'finished', // Transition to finished state
+                            lastUpdated: new Date().toISOString(),
+                            questionCount: currentQuestionCount // Update count
+                        });
+                        showMessage("Game is ending!", 'info');
+                    } else {
+                        const newQuestion = await generateTriviaQuestion(); // Get next dynamic question
+                        await updateDoc(gameDocRef, {
+                            player1Score: newPlayer1Score,
+                            player2Score: newPlayer2Score,
+                            currentQuestion: newQuestion,
+                            player1Answer: '', // Clear previous answers
+                            player2Answer: '',
+                            state: 'question',
+                            lastUpdated: new Date().toISOString(),
+                            questionCount: currentQuestionCount // Update count
+                        });
+                        showMessage("Next question!", 'success');
+                    }
                 } else if (gameData.state === 'waiting' && gameData.player2Id) {
                     // Initial start of the game by Player 1
-                    const initialQuestion = getNextTriviaQuestion();
+                    currentQuestionCount = 1; // Start first question
+                    const initialQuestion = await generateTriviaQuestion(); // Get first dynamic question
                     await updateDoc(gameDocRef, {
                         currentQuestion: initialQuestion,
                         state: 'question',
-                        lastUpdated: new Date().toISOString()
+                        lastUpdated: new Date().toISOString(),
+                        questionCount: currentQuestionCount // Initialize count
                     });
                     showMessage("Game started!", 'success');
                 } else {
@@ -909,11 +1072,13 @@
 
         /**
          * Resets the UI to the initial state (auth section).
+         * This also resets all game state variables.
          */
         function resetUI() {
             authSection.style.display = 'block';
             gameLobby.style.display = 'none';
             gamePlayArea.style.display = 'none';
+            gameOverScreen.style.display = 'none'; // Hide game over screen
             playerNameInput.value = playerName; // Keep last entered name
             joinGameIdInput.value = '';
             answerInput.value = '';
@@ -929,7 +1094,14 @@
             myUserIdSpan.textContent = userId || 'N/A';
             gameStatusSpan.textContent = 'Ready to play!';
             showMessage("", 'info'); // Clear any lingering messages
-            currentQuestionIndex = 0; // Reset question index for new game
+            currentQuestionCount = 0; // Reset question count for new game
+            gameId = null; // Clear game ID
+            if (unsubscribeGameListener) {
+                unsubscribeGameListener(); // Ensure listener is stopped
+                unsubscribeGameListener = null;
+            }
+            confettiParticles = []; // Clear confetti
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); // Clear canvas
         }
 
         // Event Listeners
@@ -950,9 +1122,15 @@
         submitAnswerButton.addEventListener('click', submitAnswer);
         nextQuestionButton.addEventListener('click', nextQuestion);
         leaveGameButton.addEventListener('click', leaveGame);
+        playAgainButton.addEventListener('click', resetUI); // New event listener for Play Again
 
-        // Initialize Firebase when the window loads
-        window.onload = initializeFirebase;
+        // Initialize Firebase and Confetti when the window loads
+        window.onload = () => {
+            initializeFirebase();
+            resizeConfettiCanvas(); // Set initial canvas size
+            animateConfetti(); // Start confetti animation loop
+        };
+        window.addEventListener('resize', resizeConfettiCanvas); // Resize confetti canvas on window resize
     </script>
 </body>
 </html>
