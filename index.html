@@ -317,6 +317,7 @@
         let gameId = null; // The ID of the current game room
         let unsubscribeGameListener = null; // To stop listening to game updates
         let currentQuestionIndex = 0; // To track the current question from the static list
+        let appId = null; // Declare appId globally to be set from firebaseConfig
 
         // Static list of trivia questions
         const triviaQuestions = [
@@ -412,40 +413,38 @@
         async function initializeFirebase() {
             showLoading(true, 'Initializing game...');
             try {
-                // __app_id and __firebase_config are global variables provided by the Canvas environment
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
+                // Firebase configuration: IMPORTANT!
+                // This object MUST contain the exact configuration for your Firebase project.
+                // You can find this in your Firebase Console under Project settings > General > Your apps.
+                //
+                // Common causes for "auth/configuration-not-found" error:
+                // 1. 'authDomain' in this firebaseConfig object is incorrect or misspelled.
+                // 2. Firebase 'Authentication' service is NOT enabled in your Firebase project.
+                // 3. The 'Anonymous' sign-in method is NOT enabled under Authentication > Sign-in method.
                 const firebaseConfig = {
-
-                apiKey: "AIzaSyB4NYRePoxx7tHKV5AM_IHPQ75LFZQSOPw",
-
-                authDomain: "couple-s-trivia.firebaseapp.com",
-
-                projectId: "couple-s-trivia",
-
-                storageBucket: "couple-s-trivia.firebasestorage.app",
-
-                messagingSenderId: "262441038638",
-
-                appId: "1:262441038638:web:9a0c3fdd2b702ce0d680bf"
-
+                    apiKey: "AIzaSyB4NYRePoxx7tHKV5AM_IHPQ75LFZQSOPw",
+                    authDomain: "couple-s-trivia.firebaseapp.com",
+                    projectId: "couple-s-trivia",
+                    storageBucket: "couple-s-trivia.firebasestorage.app",
+                    messagingSenderId: "262441038638",
+                    appId: "1:262441038638:web:9a0c3fdd2b702ce0d680bf"
                 };
-
-
+                
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // __initial_auth_token is a global variable provided by the Canvas environment
-                //if (typeof __initial_auth_token !== 'undefined') {
-                 //   await signInWithCustomToken(auth, __initial_auth_token);
-                //} else {
-                  //  await signInAnonymously(auth);
-                //}
-                await signInAnonymously(auth); // Sign in anonymously for game functionality
-                
+                // Assign the global appId from the initialized app's options
+                // This ensures consistency when constructing Firestore paths.
+                appId = app.options.appId; 
 
+                console.log("Firebase Config Used:", firebaseConfig); // For debugging
+                console.log("Derived App ID (for Firestore paths):", appId); // For debugging
+
+                // Sign in anonymously for game functionality
+                // This will create a temporary user for each player without requiring a login form.
+                await signInAnonymously(auth);
+                
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
@@ -466,7 +465,7 @@
                 });
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                showMessage("Failed to initialize game. Please try again.", 'error');
+                showMessage("Failed to initialize game. Please try again. Check console for details.", 'error');
                 showLoading(false);
             }
         }
@@ -494,7 +493,9 @@
                 unsubscribeGameListener(); // Unsubscribe from previous listener if any
             }
 
-            const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, id);
+            // Use the globally set appId for Firestore paths
+            // Ensure 'app' is initialized before this function is called
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/coupleGames`, id);
 
             unsubscribeGameListener = onSnapshot(gameDocRef, (docSnap) => {
                 if (docSnap.exists()) {
@@ -587,7 +588,7 @@
                     // If both players have answered, transition to 'revealing' state
                     if (gameData.player1Answer && gameData.player2Answer) {
                         if (isPlayer1) { // Only player 1 updates state to avoid race conditions
-                            updateDoc(doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId), {
+                            updateDoc(doc(db, `artifacts/${appId}/public/data/coupleGames`, gameId), {
                                 state: 'revealing'
                             }).catch(e => console.error("Error updating state to revealing:", e));
                         }
@@ -632,7 +633,7 @@
             showLoading(true, 'Creating game...');
             try {
                 gameId = userId; // Use creator's UID as game ID for simplicity
-                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/coupleGames`, gameId);
                 const gameDocSnap = await getDoc(gameDocRef);
 
                 if (gameDocSnap.exists()) {
@@ -683,7 +684,7 @@
             }
             showLoading(true, 'Joining game...');
             try {
-                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, id);
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/coupleGames`, id);
                 const gameDocSnap = await getDoc(gameDocRef);
 
                 if (!gameDocSnap.exists()) {
@@ -742,7 +743,7 @@
 
             showLoading(true, 'Submitting answer...');
             try {
-                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/coupleGames`, gameId);
                 const gameDocSnap = await getDoc(gameDocRef);
                 if (!gameDocSnap.exists()) {
                     showMessage("Game not found.", 'error');
@@ -787,7 +788,7 @@
 
             showLoading(true, 'Advancing game...');
             try {
-                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/coupleGames`, gameId);
                 const gameDocSnap = await getDoc(gameDocRef);
                 if (!gameDocSnap.exists()) {
                     showMessage("Game not found.", 'error');
@@ -867,7 +868,7 @@
                     unsubscribeGameListener = null;
                 }
 
-                const gameDocRef = doc(db, `artifacts/${__app_id}/public/data/coupleGames`, gameId);
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/coupleGames`, gameId);
                 const gameDocSnap = await getDoc(gameDocRef);
 
                 if (gameDocSnap.exists()) {
@@ -947,3 +948,4 @@
     </script>
 </body>
 </html>
+
