@@ -289,11 +289,14 @@
                 <button id="submitAnswerButton">Submit Answer</button>
             </div>
 
+            <!-- Moved nextQuestionButton out of revealedAnswers for independent control -->
+            <button id="nextQuestionButton" style="margin-top: 15px; display: none;">Next Question</button>
+
             <div class="answers-display" id="revealedAnswers" style="display: none;">
                 <h3>Answers:</h3>
                 <div id="player1AnswerDisplay"></div>
                 <div id="player2AnswerDisplay"></div>
-                <button id="nextQuestionButton" style="margin-top: 15px;">Next Question</button>
+                <!-- The nextQuestionButton was here, now it's outside -->
             </div>
 
             <div class="message-box" id="messageBox"></div>
@@ -544,6 +547,7 @@
                 revealedAnswers.style.display = 'none';
                 submitAnswerButton.disabled = true;
                 nextQuestionButton.disabled = true;
+                nextQuestionButton.style.display = 'none'; // Ensure it's hidden if waiting for partner
                 return; // Wait until both players are connected
             } else {
                 gameStatusSpan.textContent = "Game in progress!";
@@ -561,12 +565,12 @@
                     // If both players are present, player 1 can start the game
                     if (isPlayer1 && gameData.player2Id) {
                         questionDisplay.textContent = "Both players are here! Player 1, click 'Next Question' to start.";
-                        nextQuestionButton.style.display = 'block';
+                        nextQuestionButton.style.display = 'block'; // Make it visible for Player 1
                         nextQuestionButton.textContent = "Start Game";
                         nextQuestionButton.disabled = false;
                     } else if (isPlayer2 && gameData.player2Id) {
                         questionDisplay.textContent = "Waiting for Player 1 to start the game...";
-                        nextQuestionButton.style.display = 'none';
+                        nextQuestionButton.style.display = 'none'; // Hide it for Player 2
                     }
                     break;
 
@@ -574,7 +578,7 @@
                     questionDisplay.textContent = gameData.currentQuestion;
                     answerInputSection.style.display = 'block';
                     revealedAnswers.style.display = 'none';
-                    nextQuestionButton.style.display = 'none';
+                    nextQuestionButton.style.display = 'none'; // Hide next question button during answering phase
 
                     // Enable/disable submit button based on if current user has answered
                     const myAnswer = isPlayer1 ? gameData.player1Answer : gameData.player2Answer;
@@ -602,8 +606,8 @@
                 case 'revealing':
                     questionDisplay.textContent = gameData.currentQuestion;
                     answerInputSection.style.display = 'none';
-                    revealedAnswers.style.display = 'block';
-                    nextQuestionButton.style.display = 'block';
+                    revealedAnswers.style.display = 'block'; // Show revealed answers
+                    nextQuestionButton.style.display = 'block'; // Show next question button for Player 1
                     nextQuestionButton.textContent = "Next Question";
 
                     player1AnswerDisplay.innerHTML = `<strong>${gameData.player1Name || 'Player 1'}'s Answer:</strong> ${gameData.player1Answer || 'No answer'}`;
@@ -952,5 +956,3 @@
     </script>
 </body>
 </html>
-
-
